@@ -1,0 +1,14 @@
+{
+  "uri": "../models/face_recognition_model-shard1",
+  "name": "face_recognition_model",
+  "weights": [{
+    "name": "conv32/conv/filters",
+    "shape": [7, 7, 3, 32],
+    "dtype": "float32",
+    "quantization": {
+      "dtype": "uint8",
+      "scale": 0.009007044808909145,
+      "min": -1.1619087803293197
+    }
+  }]
+}

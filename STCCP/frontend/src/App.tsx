@@ -6,9 +6,7 @@ import { useEffect, useState, useRef } from 'react';
 const App = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [happinessLevel, setHappinessLevel] = useState(0);
-  const [angerLevel, setAngerLevel] = useState(0);
-  const [surpriseLevel, setSurpriseLevel] = useState(0);
-  const [recentImages, setRecentImages] = useState<string[]>([]);
+  const [recentImages, setRecentImages] = useState<string[]>([]); // we want this in he other frontend
   const ws = useRef<WebSocket | null>(null);
 
 
@@ -24,6 +22,7 @@ const App = () => {
 
   async function loadModels() {
     const MODEL_URL = '/models';
+    // Other frontend needs recognition instead of expression
     await Promise.all([
       faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
       faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
@@ -39,12 +38,8 @@ const App = () => {
       if (detectionsWithExpressions.length > 0) {
         const expressions = detectionsWithExpressions[0].expressions;
         setHappinessLevel(Math.round(expressions.happy * 100));
-        setAngerLevel(Math.round(expressions.angry * 100));
-        setSurpriseLevel(Math.round(expressions.surprised * 100));
       } else {
         setHappinessLevel(prev => Math.max(prev - 1, 0));
-        setAngerLevel(prev => Math.max(prev - 1, 0));
-        setSurpriseLevel(prev => Math.max(prev - 1, 0));
       }
 
       setTimeout(() => {
@@ -67,6 +62,7 @@ const App = () => {
     });
   }, []);
 
+  //Will not be needed in the other frontend
   const takePictureAndSave = async () => {
     if (videoRef.current) {
       const canvas = document.createElement('canvas');
@@ -105,9 +101,9 @@ const App = () => {
     }
   };
 
+  //needed in the other frontend but not in this one
   useEffect(() => {
-    ws.current = new WebSocket('ws://localhost:3001');
-
+    ws.current = new WebSocket('ws://localhost:3001'); 
     ws.current.onopen = () => {
       console.log('WebSocket connected');
     };
@@ -141,7 +137,7 @@ const App = () => {
   useEffect(() => {
     let happinessTimer: NodeJS.Timeout | null = null;
 
-    if (happinessLevel >= 55 || angerLevel >= 55 || surpriseLevel >= 55) {
+    if (happinessLevel >= 55) {
       if (!happinessTimer) {
         happinessTimer = setTimeout(() => {
           takePictureAndSave();
@@ -158,7 +154,7 @@ const App = () => {
         clearTimeout(happinessTimer);
       }
     };
-  }, [happinessLevel, angerLevel, surpriseLevel]);
+  }, [happinessLevel]);
 
   const [flashLevel, setFlashLevel] = useState(0);
 
@@ -193,10 +189,6 @@ const App = () => {
               <Box sx={{ width: '100%' }}>
                 <p>Gladhet: <span id="happiness-level">{happinessLevel}</span></p>
                 <LinearProgress sx={{ height: "50px" }} color='success' variant="determinate" value={happinessLevel} />
-                <p>Arghet: <span id="anger-level">{angerLevel}</span></p>
-                <LinearProgress sx={{ height: "50px" }} color='error' variant="determinate" value={angerLevel} />
-                <p>Förvånad: <span id="surprise-level">{surpriseLevel}</span></p>
-                <LinearProgress sx={{ height: "50px" }} color='warning' variant="determinate" value={surpriseLevel} />
               </Box>
             </div>
           </div>
