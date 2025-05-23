@@ -74,15 +74,36 @@ const createFaceRecognizer = (): FaceRecognizer => {
 
     // Get prediction distances for all classes
     async predict(face: HTMLImageElement | HTMLCanvasElement | HTMLVideoElement): Promise<Prediction[]> {
-      const inputDescriptor = await faceapi.computeFaceDescriptor(face);
-      if (!(inputDescriptor instanceof Float32Array)) {
+      try {
+        // Try to detect a face first, as computeFaceDescriptor may fail if no face is detected
+        const detection = await faceapi.detectSingleFace(face, new faceapi.TinyFaceDetectorOptions())
+                                .withFaceLandmarks();
+        
+        if (!detection) {
+          console.log('No face detected in frame for recognition');
+          return [];
+        }
+                                
+        const inputDescriptor = await faceapi.computeFaceDescriptor(face);
+        if (!(inputDescriptor instanceof Float32Array)) {
+          console.log('Invalid descriptor returned from computeFaceDescriptor');
+          return [];
+        }
+        
+        // Check that descriptorsByClass is an array before trying to map over it
+        if (!Array.isArray(this.descriptorsByClass)) {
+          console.log('descriptorsByClass is not an array:', this.descriptorsByClass);
+          return [];
+        }
+        
+        return this.descriptorsByClass.map(ds => ({
+          className: ds.className,
+          distance: this.computeMeanDistance(ds.faceDescriptors, inputDescriptor)
+        }));
+      } catch (error) {
+        console.error('Error in predict method:', error);
         return [];
       }
-      
-      return this.descriptorsByClass.map(ds => ({
-        className: ds.className,
-        distance: this.computeMeanDistance(ds.faceDescriptors, inputDescriptor)
-      }));
     },
 
     // Return class name of prediction with lowest distance
@@ -131,14 +152,20 @@ const App = () => {
 
   async function loadModels() {
     setRecognitionStatus('Loading face recognition models...');
-    const MODEL_URL = '/models';
     try {
-      await Promise.all([
-        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-        faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
-        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-        faceapi.nets.ssdMobilenetv1.loadFromUri(MODEL_URL),
-      ]);
+      // Define model URL
+      const MODEL_URL = `${window.location.origin}/models`;
+      
+      // Load each model sequentially to avoid race conditions
+      await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+      console.log('TinyFaceDetector loaded');
+      
+      await faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL);
+      console.log('FaceLandmark68Net loaded');
+      
+      await faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL);
+      console.log('FaceRecognitionNet loaded');
+      
       console.log('All models loaded successfully');
       setRecognitionStatus('Models loaded successfully');
       return true;
