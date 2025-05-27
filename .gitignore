@@ -44,11 +44,11 @@ coverage
 .tmp
 
 
-backend/uploads/*
-backend/node_modules/*
+STCCP/backend/uploads/*
+STCCP/backend/node_modules/*
 
-frontend/dist/*
-frontend/node_modules/*
+STCCP/frontend/dist/*
+STCCP/frontend/node_modules/*
 
-frontend_rec/dist/*
-frontend_rec/node_modules/*
+STCCP/frontend_rec/dist/*
+STCCP/frontend_rec/node_modules/*

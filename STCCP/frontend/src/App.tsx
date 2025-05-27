@@ -65,25 +65,92 @@ const App = () => {
   //Will not be needed in the other frontend
   const takePictureAndSave = async () => {
     if (videoRef.current) {
+      // Create a canvas and draw the full video frame
       const canvas = document.createElement('canvas');
       canvas.width = videoRef.current.videoWidth;
       canvas.height = videoRef.current.videoHeight;
       const context = canvas.getContext('2d');
+      
       if (context) {
         context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL('image/png');
-        const blob = await (await fetch(dataUrl)).blob();
-        const formData = new FormData();
-        formData.append('image', blob, 'snapshot.png');
-        console.log('Image captured and ready to be sent:', dataUrl);
-        const response = await fetch('http://localhost:3001/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
-        if (response.ok) {
-          console.log('Image uploaded successfully');
+        
+        // Detect faces in the captured frame
+        const detections = await faceapi
+          .detectAllFaces(canvas, new faceapi.TinyFaceDetectorOptions())
+          .withFaceExpressions();
+        
+        if (detections.length > 0) {
+          // Get the detected face with the highest happiness level
+          const happyFace = detections.reduce((prevFace, currentFace) => {
+            return (prevFace.expressions.happy > currentFace.expressions.happy) ? prevFace : currentFace;
+          });
+          
+          // Add some padding around the face (20% on each side)
+          const box = happyFace.detection.box;
+          const padding = {
+            width: box.width * 0.1,
+            height: box.height * 0.1
+          };
+          
+          // Calculate the crop area with padding, ensuring it stays within the canvas boundaries
+          const cropArea = {
+            x: Math.max(0, box.x - padding.width),
+            y: Math.max(0, box.y - padding.height),
+            width: Math.min(canvas.width - box.x + padding.width, box.width + padding.width * 2),
+            height: Math.min(canvas.height - box.y + padding.height, box.height + padding.height * 2)
+          };
+          
+          // Create a new canvas for the cropped face
+          const croppedCanvas = document.createElement('canvas');
+          croppedCanvas.width = cropArea.width;
+          croppedCanvas.height = cropArea.height;
+          const croppedContext = croppedCanvas.getContext('2d');
+          
+          if (croppedContext) {
+            // Draw only the face region to the new canvas
+            croppedContext.drawImage(
+              canvas,
+              cropArea.x, cropArea.y, cropArea.width, cropArea.height,
+              0, 0, cropArea.width, cropArea.height
+            );
+            
+            // Convert the cropped canvas to a data URL
+            const croppedDataUrl = croppedCanvas.toDataURL('image/png');
+            const blob = await (await fetch(croppedDataUrl)).blob();
+            const formData = new FormData();
+            formData.append('image', blob, 'face-snapshot.png');
+            
+            console.log('Cropped face image captured and ready to be sent');
+            const response = await fetch('http://localhost:3001/api/upload', {
+              method: 'POST',
+              body: formData,
+            });
+            
+            if (response.ok) {
+              console.log('Cropped face image uploaded successfully');
+            } else {
+              console.error('Cropped face image upload failed:', response.statusText);
+            }
+          }
         } else {
-          console.error('Image upload failed:', response.statusText);
+          // If no face detected, fallback to full image capture
+          console.log('No face detected, saving full image');
+          const dataUrl = canvas.toDataURL('image/png');
+          const blob = await (await fetch(dataUrl)).blob();
+          const formData = new FormData();
+          formData.append('image', blob, 'snapshot.png');
+          
+          console.log('Full image captured and ready to be sent');
+          const response = await fetch('http://localhost:3001/api/upload', {
+            method: 'POST',
+            body: formData,
+          });
+          
+          if (response.ok) {
+            console.log('Full image uploaded successfully');
+          } else {
+            console.error('Image upload failed:', response.statusText);
+          }
         }
       }
       setFlashLevel(100);
