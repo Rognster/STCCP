@@ -1,0 +1,14 @@
+{
+  "uri": "../models/face_landmark_68_model-shard1",
+  "name": "face_landmark_68_model",
+  "weights": [{
+    "name": "conv0/filters",
+    "shape": [3, 3, 3, 32],
+    "dtype": "float32",
+    "quantization": {
+      "dtype": "uint8",
+      "scale": 0.004201386130964756,
+      "min": -0.5463801970254183
+    }
+  }]
+}

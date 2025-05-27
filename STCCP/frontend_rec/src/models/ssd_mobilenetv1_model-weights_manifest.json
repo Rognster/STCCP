@@ -1,0 +1,14 @@
+{
+  "uri": "../models/ssd_mobilenetv1_model-shard1",
+  "name": "ssd_mobilenetv1_model",
+  "weights": [{
+    "name": "conv0/filters",
+    "shape": [3, 3, 3, 32],
+    "dtype": "float32",
+    "quantization": {
+      "dtype": "uint8",
+      "scale": 0.007133313361874363,
+      "min": -0.927330737043667
+    }
+  }]
+}
