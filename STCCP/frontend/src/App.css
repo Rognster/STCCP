@@ -1,4 +1,224 @@
 #root {
   margin: 0 auto;
   text-align: center;
+  width: 100%;
+  padding: 0 15px;
+  box-sizing: border-box;
+}
+
+.app-container {
+  max-width: 1500px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  margin: 0 auto;
+}
+
+.video-ui-container {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+  align-items: center;
+  background-color: black;
+  border-radius: 20px;
+  flex-direction: row;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+.video-element {
+  border-radius: 20px;
+  max-width: 100%;
+  height: auto;
+}
+
+.ui-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  width: 600px;
+  height: auto;
+  border-radius: 10px;
+  padding: 20px;
+  box-sizing: border-box;
+  touch-action: manipulation; /* Prevents delays on touch devices */
+}
+
+.name-input {
+  width: 100%;
+  margin-top: 20px;
+  padding: 10px;
+  font-size: 16px;
+  border-radius: 5px;
+  border: 1px solid #ccc;
+  background-color: #FFFFFF;
+  box-sizing: border-box;
+}
+
+.warning-message {
+  margin-top: 10px;
+  color: red;
+  text-align: center;
+  font-weight: bold;
+}
+
+/* Media Queries for Mobile Devices */
+@media screen and (max-width: 1200px) {
+  .video-ui-container {
+    flex-direction: column;
+  }
+  
+  .ui-container {
+    width: 100%;
+  }
+}
+
+@media screen and (max-width: 768px) {
+  .app-container {
+    padding: 10px 0;
+  }
+  
+  .video-element {
+    width: 100%;
+    max-height: 50vh;
+    object-fit: contain;
+  }
+  
+  /* Improve tap targets for mobile */
+  .name-input {
+    height: 48px;
+    font-size: 16px; /* Prevent zoom on mobile */
+  }
+  
+  /* Better spacing for mobile */
+  .ui-container {
+    padding: 15px 10px;
+  }
+}
+
+/* Handle landscape orientation specifically */
+@media screen and (max-width: 915px) and (orientation: landscape) {
+  .video-ui-container {
+    flex-direction: row;
+  }
+  
+  .video-element {
+    max-width: 50%;
+    max-height: 80vh;
+  }
+  
+  .ui-container {
+    max-width: 50%;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  h1 {
+    font-size: 1.5rem;
+    margin: 0.5rem 0;
+  }
+  
+  .ui-container {
+    padding: 10px;
+  }
+}
+
+.flash-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 9999;
+  transform: translateZ(0); /* Hardware acceleration for smoother animations */
+  will-change: opacity; /* Hint to browser for optimization */
+  pointer-events: none; /* Allows interactions with elements below */
+}
+
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+  border-radius: 20px;
+  text-align: center;
+}
+
+.user-greeting {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.happiness-container {
+  text-align: center;
+  font-size: 24px;
+  width: 100%;
+  margin-bottom: 15px;
+}
+
+.button-container {
+  margin-top: 20px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.capture-button {
+  min-width: 150px !important;
+  height: 45px !important;
+  font-size: 16px !important;
+  text-transform: none !important;
+  border-radius: 25px !important;
+}
+
+.mobile-help-text {
+  display: none; /* Hidden by default */
+  font-size: 14px;
+  color: #888;
+  margin-top: 15px;
+  text-align: center;
+  font-style: italic;
+}
+
+/* Only show the help text on mobile devices */
+@media screen and (max-width: 768px) {
+  .mobile-help-text {
+    display: block;
+  }
+}
+
+@media screen and (max-width: 480px) {
+  .happiness-container {
+    font-size: 18px;
+  }
+}
+
+/* Ultra small screens like iPhone SE */
+@media screen and (max-width: 375px) {
+  h1 {
+    font-size: 1.3rem;
+  }
+  
+  .ui-container {
+    padding: 8px;
+  }
+  
+  .name-input {
+    margin-top: 10px;
+  }
+  
+  .happiness-container {
+    font-size: 16px;
+  }
 }

@@ -7,6 +7,8 @@ const App = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [happinessLevel, setHappinessLevel] = useState(0);
   const [tempname, setTempname] = useState<string | null>(null);
+  const [showNameWarning, setShowNameWarning] = useState(false);
+  const [flashLevel, setFlashLevel] = useState(0);
 
 
   async function setupCamera() {
@@ -62,6 +64,13 @@ const App = () => {
 
 
   const takePictureAndSave = async () => {
+    if (!tempname || tempname.trim() === '') {
+      setShowNameWarning(true);
+      return; // Prevent taking picture if name is not provided
+    }
+
+    setShowNameWarning(false); // Hide the warning if name is provided
+
     if (videoRef.current) {
       const canvas = document.createElement('canvas');
       canvas.width = videoRef.current.videoWidth;
@@ -181,20 +190,14 @@ const App = () => {
       }
     };
   }, [happinessLevel]);
-  const [flashLevel, setFlashLevel] = useState(0);
 
 
   return (
-    <div style={{
-      maxWidth: '1500px',
-      width: '100%',
-      display: 'flex',
-      flexDirection: 'column',
-      justifyContent: 'center',
-      alignContent: 'center'
-    }}>
-      <div style={{ display: 'flex', width: '100%', justifyContent: 'center', alignContent: 'center', backgroundColor: 'black', borderRadius: '20px' }}>
+    <div style={{ maxWidth: '1500px', width: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignContent: 'center' }}>
+      <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignContent: 'center', marginTop: '20px', marginBottom: '20px' }}>
         <video ref={videoRef} style={{ borderRadius: '20px' }} />
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', alignContent: 'center', marginTop: '20px' }}>
         <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'center', alignContent: 'center' }}>
           <div style={{ width: '600px', height: 'auto', borderRadius: '10px', padding: '20px' }}>
             <h1 style={{ textAlign: 'center' }}>Personalundersökning</h1>
@@ -206,11 +209,21 @@ const App = () => {
             </div>
             <Input
               type="text"
-              placeholder="Skriv in ditt namn annars kommer du heta 'snapshot'"
+              placeholder="Skriv in ditt namn"
               value={tempname || ''}
-              onChange={(e) => setTempname(e.target.value)}
+              onChange={(e) => {
+                setTempname(e.target.value);
+                if (e.target.value.trim() !== '') {
+                  setShowNameWarning(false);
+                }
+              }}
               style={{ width: '100%', marginTop: '20px', padding: '10px', fontSize: '16px', borderRadius: '5px', border: '1px solid #ccc', backgroundColor: '#FFFFFF' }}
             />
+            {showNameWarning && (
+              <div style={{ marginTop: '10px', color: 'red', textAlign: 'center', fontWeight: 'bold' }}>
+                Du måste lägga till namn!
+              </div>
+            )}
             {
               tempname && (
                 <div style={{ marginTop: '20px', textAlign: 'center' }}>
@@ -224,7 +237,8 @@ const App = () => {
           {flashLevel > 0 && (
             <>
               <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: `rgba(255, 255, 255, ${flashLevel / 100})`, zIndex: 9999 }} />
-            </>)}
+            </>
+          )}
         </Portal>
       </div>
     </div>
