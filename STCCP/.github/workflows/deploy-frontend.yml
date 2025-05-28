@@ -1,0 +1,48 @@
+name: Deploy Frontend to Azure
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'frontend/**'
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '20.x'
+  AZURE_STATIC_WEB_APP_NAME: stccp-frontend  # set this to your static web app name
+  AZURE_STATIC_WEB_APP_LOCATION: 'frontend'  # set this to the location of your web app project
+
+permissions:
+  contents: read
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install dependencies and build
+      run: |
+        cd frontend
+        npm ci
+        npm run build
+
+    - name: Deploy to Azure Static Web App
+      id: deploy
+      uses: Azure/static-web-apps-deploy@v1
+      with:
+        azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        action: "upload"
+        app_location: "frontend"
+        api_location: "" # If your app has an API, set this to the API folder path
+        output_location: "dist" # Default output location for Vite builds
+      env:
+        PRODUCTION_BRANCH: main
