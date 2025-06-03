@@ -1,0 +1,4 @@
+{ 
+  "uri": "https://github.com/vladmandic/face-api/raw/master/model/face_expression_model-weights_manifest.json",
+  "outputPath": "./public/models/"
+}

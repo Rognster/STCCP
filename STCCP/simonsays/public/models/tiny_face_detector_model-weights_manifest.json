@@ -1,0 +1,4 @@
+{ 
+  "uri": "https://github.com/vladmandic/face-api/raw/master/model/tiny_face_detector_model-weights_manifest.json",
+  "outputPath": "./public/models/"
+}
