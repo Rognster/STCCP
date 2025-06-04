@@ -1,8 +1,10 @@
 {
   "scripts": {
-    "start": "node --loader ts-node/esm src/index.ts",
+    "start": "node dist/server.js",
     "dev": "node --loader ts-node/esm server.ts",
-    "setup": "node setup.js"
+    "setup": "node setup.js",
+    "build": "node deployment.js",
+    "deploy": "npm run build && az webapp deployment source config-zip -g STCCP -n STCCP-backend --src ./dist.zip"
   },
   "type": "module",
   "dependencies": {
