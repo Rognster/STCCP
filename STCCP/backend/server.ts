@@ -6,7 +6,45 @@ import path from 'path';
 import { WebSocketServer, WebSocket as WS, RawData } from 'ws';
 import { fileURLToPath } from 'url';
 import cors from 'cors';
+import { CosmosClient } from '@azure/cosmos';
+import dotenv from 'dotenv';
+import net from 'net'; // Import net module for port checking
 
+// Load environment variables
+dotenv.config();
+
+// Function to check if a port is available
+async function isPortAvailable(port: number): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    const tester = net.createServer()
+      .once('error', () => {
+        // Port is in use
+        resolve(false);
+      })
+      .once('listening', () => {
+        // Port is available, close the server
+        tester.close(() => resolve(true));
+      })
+      .listen(port, '0.0.0.0');
+  });
+}
+
+// Function to find an available port starting from the preferred port
+async function findAvailablePort(startPort: number, maxAttempts: number = 10): Promise<number> {
+  let port = startPort;
+  let attempts = 0;
+
+  while (attempts < maxAttempts) {
+    const available = await isPortAvailable(port);
+    if (available) {
+      return port;
+    }
+    port++;
+    attempts++;
+  }
+  
+  throw new Error(`Unable to find an available port after ${maxAttempts} attempts`);
+}
 
 ///node --loader ts-node/esm server.ts
 declare global {
@@ -25,6 +63,45 @@ app.use(cors());
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
+
+// Configure Cosmos DB
+const cosmosEndpoint = process.env.COSMOSDB_ENDPOINT || '';
+const cosmosKey = process.env.COSMOSDB_KEY || '';
+const databaseName = process.env.COSMOSDB_DATABASE_NAME || 'gamescores';
+const containerName = process.env.COSMOSDB_CONTAINER_NAME || 'results';
+
+// Initialize Cosmos client
+const cosmosClient = new CosmosClient({ endpoint: cosmosEndpoint, key: cosmosKey });
+
+// Initialize database and container
+let database: any;
+let container: any;
+
+async function initializeCosmosDB() {
+  try {
+    // Create database if it doesn't exist
+    const { database: db } = await cosmosClient.databases.createIfNotExists({ id: databaseName });
+    database = db;
+
+    // Create container if it doesn't exist
+    const { container: cont } = await database.containers.createIfNotExists({ 
+      id: containerName, 
+      partitionKey: { paths: ["/email"] } 
+    });
+    container = cont;
+
+    console.log("Cosmos DB initialized successfully");
+  } catch (error) {
+    console.error("Error initializing Cosmos DB:", error);
+  }
+}
+
+// Initialize Cosmos DB if endpoint and key are provided
+if (cosmosEndpoint && cosmosKey) {
+  initializeCosmosDB();
+} else {
+  console.warn("Cosmos DB credentials not provided. Game results will not be saved to database.");
+}
 
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 const TWO_WEEKS_IN_MS = 14 * 24 * 60 * 60 * 1000;
@@ -148,7 +225,69 @@ app.post('/api/delete', (req: Request, res: Response) => {
     });
 });
 
+// API endpoint for saving game results to Cosmos DB
+app.post('/api/saveResults', async (req: Request, res: Response) => {
+    const { name, email, points, timestamp } = req.body;
+    
+    // Validate required fields
+    if (!name || !email || points === undefined) {
+        return res.status(400).json({ message: 'Name, email, and points are required.' });
+    }
 
+    // Create a unique ID for the result
+    const resultId = `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    
+    // Create the result item
+    const resultItem = {
+        id: resultId,
+        name,
+        email,
+        points,
+        timestamp: timestamp || new Date().toISOString(),
+        game: 'SimonSays'
+    };
+
+    try {
+        // Check if Cosmos DB is configured
+        if (!container) {
+            console.warn('Cosmos DB not configured. Storing result locally only.');
+            // Here you could store results in a local file as a fallback
+            return res.json({ message: 'Result saved locally', result: resultItem });
+        }
+        
+        // Save the result to Cosmos DB
+        const { resource } = await container.items.create(resultItem);
+        
+        console.log(`Game result saved for ${name} with ID: ${resource.id}`);
+        res.json({ message: 'Result saved to database', result: resource });
+    } catch (error) {
+        console.error('Error saving game result to database:', error);
+        res.status(500).json({ message: 'Error saving game result to database' });
+    }
+});
+
+// API endpoint to get high scores
+app.get('/api/highscores', async (req: Request, res: Response) => {
+    try {
+        // Check if Cosmos DB is configured
+        if (!container) {
+            console.warn('Cosmos DB not configured. Cannot retrieve high scores.');
+            return res.status(503).json({ message: 'High score database not available' });
+        }
+        
+        // Query for top 10 scores
+        const querySpec = {
+            query: "SELECT TOP 10 c.name, c.email, c.points, c.timestamp FROM c WHERE c.game = 'SimonSays' ORDER BY c.points DESC"
+        };
+        
+        const { resources } = await container.items.query(querySpec).fetchAll();
+        
+        res.json(resources);
+    } catch (error) {
+        console.error('Error retrieving high scores:', error);
+        res.status(500).json({ message: 'Error retrieving high scores' });
+    }
+});
 
 wss.on('connection', (ws: WS) => {
     console.log('Client connected');
@@ -169,8 +308,31 @@ wss.on('connection', (ws: WS) => {
     });
 });
 
-const PORT = 3001;
-server.listen(PORT, () => {
-    console.log(`HTTP and WebSocket server running on http://localhost:${PORT} and ws://localhost:${PORT}`);
-    cleanupOldFiles();
-});
+const DEFAULT_PORT = process.env.PORT ? parseInt(process.env.PORT) : 3001;
+
+// Start the server with port conflict handling
+async function startServer() {
+    try {
+        const port = await findAvailablePort(DEFAULT_PORT);
+        server.listen(port, () => {
+            console.log(`HTTP and WebSocket server running on http://localhost:${port} and ws://localhost:${port}`);
+            if (port !== DEFAULT_PORT) {
+                console.log(`Note: Default port ${DEFAULT_PORT} was in use, server started on port ${port} instead`);
+            }
+            cleanupOldFiles();
+        });        // Handle server errors
+        server.on('error', (error: NodeJS.ErrnoException) => {
+            if (error.code === 'EADDRINUSE') {
+                console.error(`Port is already in use. Please try again with a different port.`);
+            } else {
+                console.error('Server error:', error);
+            }
+        });
+    } catch (error) {
+        console.error('Failed to start server:', error);
+        process.exit(1);
+    }
+}
+
+// Start the server
+startServer();
